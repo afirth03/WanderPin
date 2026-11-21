@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FFF8F1">
+<title>Wanderpin</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+:root{--bg:#FFF8F1;--card:#fff;--ink:#1E1B4B;--mut:#6B6A8A;--line:#F0E6DA;--coral:#FF6B57;--teal:#14B8A6;--sun:#FFB300;--green:#10B981;--ind:#6366F1;color-scheme:light}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.4 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden;position:relative}
+#map{position:absolute;inset:0}
+.top{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:12px;right:12px;z-index:6}
+.search{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:18px;padding:0 16px;box-shadow:0 6px 24px #1E1B4B26}
+.search input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:16px;color:var(--ink);padding:15px 0}
+.search .ic{font-size:18px}
+.chips{display:flex;gap:8px;margin-top:10px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 8px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;background:var(--card);border:0;border-radius:99px;padding:9px 15px;font:inherit;font-size:14px;font-weight:600;color:var(--ink);box-shadow:0 3px 12px #1E1B4B1F;cursor:pointer;transition:transform .15s,background .2s}
+.chip:active{transform:scale(.95)}
+.chip.on{background:var(--ink);color:#fff}
+.chip.busy{animation:busy 1.2s ease-in-out infinite}
+@keyframes busy{50%{opacity:.6}}
+.res{background:var(--card);border-radius:18px;margin-top:8px;box-shadow:0 10px 30px #1E1B4B30;max-height:50vh;overflow-y:auto;display:none}
+.res.show{display:block}
+.ri{display:flex;gap:12px;align-items:center;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--line)}
+.ri:last-child{border:0}.ri:active{background:var(--bg)}
+.ri .e{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:19px;flex:none}
+.ri b{display:block;font-size:15px}.ri span{color:var(--mut);font-size:12.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:62vw}
+.fab{position:absolute;z-index:5;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 98px);width:48px;height:48px;border-radius:50%;border:0;background:var(--card);box-shadow:0 6px 18px #1E1B4B30;font-size:20px;cursor:pointer}
+.dock{position:absolute;z-index:10;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 22px);display:flex;gap:6px;background:var(--ink);padding:6px;border-radius:99px;box-shadow:0 10px 30px #1E1B4B55}
+.dock button{border:0;background:none;color:#fff;font:inherit;font-weight:600;font-size:14px;padding:11px 18px;border-radius:99px;cursor:pointer}
+.dock button.on{background:var(--coral)}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:12;background:var(--card);border-radius:26px 26px 0 0;box-shadow:0 -10px 40px #1E1B4B40;max-height:68%;overflow-y:auto;transform:translateY(106%);transition:transform .45s cubic-bezier(.2,.85,.25,1);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px);overscroll-behavior:contain}
+.sheet.open{transform:none}
+.hero{height:132px;position:relative;overflow:hidden;border-radius:26px 26px 0 0;background:linear-gradient(120deg,var(--a),var(--b),var(--a));background-size:200% 200%;animation:grad 7s ease-in-out infinite}
+.hero i{position:absolute;border-radius:50%;background:#fff;opacity:.22;filter:blur(2px)}
+.hero i:nth-child(1){width:120px;height:120px;left:-20px;top:-30px;animation:fl 9s ease-in-out infinite alternate}
+.hero i:nth-child(2){width:80px;height:80px;right:60px;bottom:-30px;animation:fl 7s ease-in-out infinite alternate-reverse}
+.hero em{position:absolute;right:26px;top:22px;font-style:normal;font-size:62px;animation:bob 3.2s ease-in-out infinite;filter:drop-shadow(0 8px 10px #0003)}
+.hero .tag{position:absolute;left:18px;bottom:14px;background:#fff9;backdrop-filter:blur(6px);color:var(--ink);font-weight:700;font-size:12px;padding:5px 11px;border-radius:99px}
+.x{position:absolute;z-index:3;top:12px;left:14px;width:34px;height:34px;border-radius:50%;border:0;background:#fff9;color:var(--ink);font-size:16px;cursor:pointer}
+@keyframes grad{50%{background-position:100% 50%}}
+@keyframes fl{to{transform:translate(30px,18px)}}
+@keyframes bob{50%{transform:translateY(-9px) rotate(5deg)}}
+.body{padding:16px 18px}
+input[type=text],textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1.5px solid transparent;border-radius:14px;padding:11px 13px;resize:vertical;outline:0;transition:border .2s}
+input[type=text]:focus,textarea:focus{border-color:var(--teal);background:#fff}
+input.name{font-size:21px;font-weight:800;padding-left:0;background:none}
+.addr{color:var(--mut);font-size:13px;margin:2px 0 6px}
+.seg{display:flex;gap:10px;margin:12px 0}
+.seg button{flex:1;padding:13px 6px;border-radius:14px;border:2px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-weight:700;font-size:14px;cursor:pointer;transition:all .2s}
+.seg .w.on{background:var(--sun);border-color:var(--sun);color:#3a2800;transform:scale(1.02)}
+.seg .v.on{background:var(--green);border-color:var(--green);color:#fff;transform:scale(1.02)}
+label{display:block;font-size:12px;font-weight:800;color:var(--mut);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.6px}
+.stars button{background:none;border:0;font-size:32px;padding:0 3px;cursor:pointer;color:#E9E1D6;line-height:1;transition:transform .15s}
+.stars button.on{color:var(--sun)}.stars button:active{transform:scale(1.3)}
+.row{display:flex;justify-content:space-between;margin-top:16px}
+.link{background:none;border:0;color:var(--coral);font:inherit;font-weight:700;cursor:pointer;padding:6px 0}
+.link.d{color:var(--ind)}
+.list{position:absolute;inset:0;z-index:9;background:var(--bg);padding:calc(env(safe-area-inset-top,0px) + 20px) 16px 110px;overflow-y:auto;display:none}
+.list.open{display:block}
+.list h1{margin:0 0 14px;font-size:28px}
+.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tabs button{padding:9px 16px;border-radius:99px;border:0;background:#fff;color:var(--ink);font:inherit;font-weight:600;font-size:14px;cursor:pointer;box-shadow:0 2px 8px #1E1B4B14}
+.tabs .on{background:var(--ink);color:#fff}
+.item{display:flex;gap:14px;align-items:center;background:#fff;border-radius:18px;padding:13px;margin-bottom:12px;cursor:pointer;box-shadow:0 4px 16px #1E1B4B12}
+.item .e{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;font-size:24px;flex:none}
+.item b{display:block}.item span{color:var(--mut);font-size:13px}
+.item .s{margin-left:auto;font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;flex:none}
+.empty{color:var(--mut);text-align:center;margin-top:60px}
+.mk{cursor:pointer}.mk .in{transform-origin:bottom center}
+.mk .in.pop{animation:drop .7s cubic-bezier(.3,1.7,.5,1)}
+@keyframes drop{from{transform:translateY(-60px) scale(.5);opacity:0}}
+.mk .in.sel{animation:jump 1.1s ease-in-out infinite}
+@keyframes jump{50%{transform:translateY(-8px)}}
+.me{width:18px;height:18px;border-radius:50%;background:#2F6BFF;border:3px solid #fff;box-shadow:0 0 0 0 #2F6BFF80;animation:ping 2s infinite}
+@keyframes ping{to{box-shadow:0 0 0 18px #2F6BFF00}}
+.maplibregl-ctrl-bottom-left{bottom:calc(env(safe-area-inset-bottom,0px) + 4px)}
+#banner{display:none;position:absolute;z-index:7;left:16px;right:16px;top:50%;transform:translateY(-50%);background:#fff;border-radius:22px;padding:22px;box-shadow:0 14px 40px #1E1B4B40;text-align:center}
+#banner h2{margin:0 0 8px;font-size:20px}#banner p{margin:0;color:var(--mut);font-size:14px}
+#banner button{margin-top:14px;background:var(--coral);color:#fff;border:0;border-radius:99px;padding:11px 22px;font:inherit;font-weight:700;cursor:pointer}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style></head><body>
+<div id="map"></div>
+<div class="top"><div class="search"><span class="ic">🔎</span><input id="q" type="text" placeholder="Search cafés, parks, streets…" autocomplete="off" enterkeyhint="search"></div>
+<div class="res" id="res"></div>
+<div class="chips" id="chips"></div></div>
+<button class="fab" id="loc" aria-label="My location">◎</button>
+<div class="dock"><button class="on" id="tm">🗺 Map</button><button id="tl">❤ My places <span id="cnt"></span></button></div>
+<div id="banner"><h2>🗺 The map couldn’t load</h2><p>Wanderpin needs an internet connection, and must be opened from a normal web address (for example Netlify or GitHub Pages). It won’t load inside a preview window or straight from a file.</p><button onclick="location.reload()">Try again</button></div>
+<div class="list" id="list"></div>
+<div class="sheet" id="sheet"></div>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let places=[];try{places=JSON.parse(localStorage.getItem('wp3')||'[]')}catch(e){}
+const save=()=>{try{localStorage.setItem('wp3',JSON.stringify(places))}catch(e){}$('cnt').textContent=places.filter(p=>p.s).length||''};
+const CAT={food:['🍜','#FF6B57','#FFB36B'],coffee:['☕','#C77D3A','#FFD08A'],bar:['🍹','#8B5CF6','#F472B6'],park:['🌳','#10B981','#BEF264'],shop:['🛍️','#EC4899','#FDBA74'],sight:['🏛️','#6366F1','#38BDF8'],stay:['🛏️','#0EA5E9','#67E8F9'],other:['📍','#14B8A6','#6EE7B7']};
+function cat(c,t){const s=(c+' '+t).toLowerCase();if(/restaurant|fast_food|food|bakery|ice_cream|deli/.test(s))return'food';if(/cafe|coffee/.test(s))return'coffee';if(/\bbar\b|pub|nightclub|biergarten/.test(s))return'bar';if(/park|garden|forest|nature|beach|playground|wood|pitch|leisure/.test(s))return'park';if(/shop|supermarket|mall|retail|clothes|books|market|department/.test(s))return'shop';if(/museum|attraction|viewpoint|gallery|theatre|cinema|monument|tourism|historic|castle|arts/.test(s))return'sight';if(/hotel|hostel|guest|lodging|motel/.test(s))return'stay';return'other'}
+const showBanner=()=>{$('banner').style.display='block'};
+if(!window.maplibregl){showBanner();throw new Error('Map library blocked')}
+const map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/liberty',center:[-0.1278,51.5074],zoom:13,maxPitch:70,attributionControl:{compact:true}});
+let sel=null,mk=[],me=null,chip=null;
+map.on('error',()=>{if(!map.isStyleLoaded())showBanner()});
+map.on('load',()=>{$('banner').style.display='none'});
+setTimeout(()=>{if(!map.isStyleLoaded())showBanner()},9000);
+function locate(fly){navigator.geolocation&&navigator.geolocation.getCurrentPosition(p=>{const c=[p.coords.longitude,p.coords.latitude];if(!me){const d=document.createElement('div');d.className='me';me=new maplibregl.Marker({element:d}).setLngLat(c).addTo(map)}else me.setLngLat(c);if(fly)map.flyTo({center:c,zoom:15,pitch:0,bearing:0,duration:1800})},()=>{},{timeout:8000})}
+locate(1);$('loc').onclick=()=>locate(1);
+function pin(c,g,cls){const el=document.createElement('div');el.className='mk';el.innerHTML=`<div class="in ${cls||''}"><svg width="36" height="46" viewBox="0 0 34 44"><path d="M17 43C17 43 3 27 3 16a14 14 0 0128 0c0 11-14 27-14 27z" fill="${c}" stroke="#fff" stroke-width="2.5"/><circle cx="17" cy="16" r="9" fill="#fff" opacity=".28"/><text x="17" y="21.5" text-anchor="middle" font-size="14" font-weight="800" fill="#fff" font-family="system-ui">${g}</text></svg></div>`;return el}
+function draw(pop){mk.forEach(m=>m.remove());mk=[];places.filter(p=>p.s||p===sel).forEach(p=>{const c=p.s=='v'?'#10B981':p.s=='w'?'#FFB300':'#FF6B57',el=pin(c,p.s=='v'?'✓':p.s=='w'?'★':'',(p===sel?'sel ':'')+(pop&&p===sel?'pop':''));el.onclick=e=>{e.stopPropagation();openP(p)};mk.push(new maplibregl.Marker({element:el,anchor:'bottom'}).setLngLat([p.lng,p.lat]).addTo(map))});if(typeof declutter=='function')declutter()}
+const found=new Map(),MAXR=400,LIM=40;let chipQ=null,qTok=0,lastReq=0,mvT;
+function clearRes(){found.forEach(o=>o.m.remove());found.clear()}
+const near=(a,b)=>Math.abs(a.lat-b.lat)<.0005&&Math.abs(a.lng-b.lng)<.0007,nm=x=>(x.name||'').trim().toLowerCase();
+// Same venue often comes back twice (as a point and as its building) under different ids, so match by name + location too.
+const isDup=r=>{if(found.has(r.id))return true;const n=nm(r);for(const o of found.values())if(near(o.p,r)&&(nm(o.p)===n||(Math.abs(o.p.lat-r.lat)<1e-5&&Math.abs(o.p.lng-r.lng)<1e-5)))return true;return places.some(p=>p.s&&(p.id===r.id||(nm(p)===n&&near(p,r))))};
+// Hide any result pin that would sit on top of a pin already shown (saved pins win, then earlier finds). Zooming in reveals hidden ones.
+function declutter(){const S=40,g=new Map(),key=(x,y)=>Math.floor(x/S)+','+Math.floor(y/S),
+hit=(x,y)=>{const cx=Math.floor(x/S),cy=Math.floor(y/S);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const a=g.get((cx+i)+','+(cy+j));if(a)for(const[px,py]of a)if(Math.abs(px-x)<30&&Math.abs(py-y)<40)return true}return false},
+put=(x,y)=>{const k=key(x,y);(g.get(k)||g.set(k,[]).get(k)).push([x,y])};
+mk.forEach(m=>{const p=map.project(m.getLngLat());put(p.x,p.y)});
+for(const o of found.values()){const p=map.project([o.p.lng,o.p.lat]),hide=(sel&&sel.id===o.p.id)||hit(p.x,p.y);o.m.getElement().style.visibility=hide?'hidden':'';if(!hide)put(p.x,p.y)}}
+let dq=0;const dc=()=>{if(!dq)dq=requestAnimationFrame(()=>{dq=0;declutter()})};map.on('move',dc);
+function addRes(list){list.forEach(r=>{if(isDup(r))return;const el=pin('#6366F1',CAT[r.t][0],'pop');el.onclick=e=>{e.stopPropagation();openP(r)};found.set(r.id,{p:r,m:new maplibregl.Marker({element:el,anchor:'bottom'}).setLngLat([r.lng,r.lat]).addTo(map)})});
+if(found.size>MAXR){const c=map.getCenter(),d=o=>(o.p.lng-c.lng)**2+(o.p.lat-c.lat)**2;[...found].sort((a,b)=>d(b[1])-d(a[1])).slice(0,found.size-MAXR).forEach(([id,o])=>dropRes(id,o))}declutter();chipUI()}
+function dropRes(id,o){if(sel&&sel.id===id)return;o.m.remove();found.delete(id)}
+// Forget pins outside the area being viewed (plus a small margin), so moving away clears them and coming back finds them again.
+function prune(){const b=map.getBounds(),w=b.getWest(),e=b.getEast(),n=b.getNorth(),s=b.getSouth(),mx=(e-w)*.25,my=(n-s)*.25;
+for(const[id,o]of[...found])if(o.p.lng<w-mx||o.p.lng>e+mx||o.p.lat<s-my||o.p.lat>n+my)dropRes(id,o);declutter();chipUI()}
+function chipUI(busy){document.querySelectorAll('.chip').forEach(c=>{const on=c===chip;c.classList.toggle('on',on);if(busy!=null)c.classList.toggle('busy',on&&busy);c.textContent=c.dataset.l+(on&&found.size?' · '+found.size:'')})}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function slowNom(path){const w=lastReq+1100-Date.now();if(w>0)await sleep(w);lastReq=Date.now();return nom(path)}
+// Progressive search: query the whole view, and while a box comes back full (so more probably exist), split it into quarters and keep looking.
+async function scan(){if(!chipQ)return;const tok=++qTok,{q,t}=chipQ,b=map.getBounds(),boxes=[[b.getWest(),b.getNorth(),b.getEast(),b.getSouth()]];chipUI(1);
+for(let i=0;i<boxes.length&&i<9;i++){const[w,n,e,s]=boxes[i];
+const ex=[...found.values()].filter(o=>o.p.lng>=w&&o.p.lng<=e&&o.p.lat<=n&&o.p.lat>=s).slice(-150).map(o=>o.p.id.slice(1)).join(',');
+const d=await slowNom(`search?format=jsonv2&limit=${LIM}&bounded=1&viewbox=${w},${n},${e},${s}&q=${q}`+(ex?'&exclude_place_ids='+ex:''));
+if(tok!==qTok)return;const list=(d||[]).map(x=>{const p=toP(x);p.t=t;return p});addRes(list);
+if(list.length>=LIM){const mx=(w+e)/2,my=(n+s)/2;boxes.push([w,n,mx,my],[mx,n,e,my],[w,my,mx,s],[mx,my,e,s])}}
+if(tok===qTok)chipUI(0)}
+map.on('moveend',()=>{if(!chipQ)return;qTok++;prune();clearTimeout(mvT);mvT=setTimeout(scan,700)});
+const toP=r=>({id:'n'+r.place_id,name:r.name||r.display_name.split(',')[0],addr:r.display_name.split(',').slice(1,4).join(',').trim(),lat:+r.lat,lng:+r.lon,t:cat(r.category||r.class,r.type)});
+async function nom(path){try{const r=await fetch('https://nominatim.openstreetmap.org/'+path);return await r.json()}catch(e){return null}}
+let tm;$('q').oninput=e=>{clearTimeout(tm);const v=e.target.value.trim();if(v.length<3){$('res').classList.remove('show');return}tm=setTimeout(async()=>{const b=map.getBounds(),vb=[b.getWest(),b.getNorth(),b.getEast(),b.getSouth()].join(',');const d=await nom('search?format=jsonv2&limit=8&viewbox='+vb+'&q='+encodeURIComponent(v));const r=$('res');if(!d||!d.length){r.innerHTML='<div class="ri"><span>'+(d?'No places found':'Search is unavailable right now. Check your connection.')+'</span></div>'}else{r.innerHTML=d.map((x,i)=>{const p=toP(x);return`<div class="ri" data-i="${i}"><div class="e" style="background:${CAT[p.t][2]}55">${CAT[p.t][0]}</div><div><b>${esc(p.name)}</b><span>${esc(p.addr)}</span></div></div>`}).join('');r.querySelectorAll('.ri').forEach(n=>n.onclick=()=>{$('res').classList.remove('show');$('q').blur();openP(toP(d[+n.dataset.i]))})}r.classList.add('show')},450)};
+[['🍜','Food','restaurant','food'],['☕','Coffee','cafe','coffee'],['🍹','Bars','bar','bar'],['🌳','Parks','park','park'],['🛍️','Shops','shop','shop'],['🏛️','Sights','museum','sight']].forEach(([e,l,q,t])=>{const b=document.createElement('button');b.className='chip';b.dataset.l=e+' '+l;b.textContent=b.dataset.l;b.onclick=()=>{clearTimeout(mvT);qTok++;clearRes();if(chip==b){chip=null;chipQ=null;chipUI(0);return}chip=b;chipQ={q,t};scan()};$('chips').appendChild(b)});
+map.on('click',e=>{$('res').classList.remove('show');const bb=[[e.point.x-10,e.point.y-10],[e.point.x+10,e.point.y+10]];
+const f=map.queryRenderedFeatures(bb).find(f=>f.properties&&f.properties.name&&/^poi/.test(f.layer.id));
+const ll=f&&f.geometry.type=='Point'?f.geometry.coordinates:[e.lngLat.lng,e.lngLat.lat];
+const id=f?'t'+f.properties.name+ll[1].toFixed(5)+ll[0].toFixed(5):'c'+Date.now();
+let p=places.find(x=>x.id==id)||{id,name:f?f.properties.name:'Dropped pin',addr:'',lat:ll[1],lng:ll[0],t:f?cat(f.properties.class,f.properties.subclass):'other'};
+openP(p);if(!p.addr)nom(`reverse?format=jsonv2&zoom=18&lat=${p.lat}&lon=${p.lng}`).then(r=>{if(!r||!r.display_name)return;p.addr=r.display_name.split(',').slice(0,4).join(',').trim();if(p.name=='Dropped pin'&&!p.named&&r.name){p.name=r.name;p.t=cat(r.category,r.type)}if(sel===p&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName))render()})});
+function openP(p){closeUntouched();let q=places.find(x=>x.id==p.id);if(!q){q=Object.assign(p,{s:'',note:'',rate:0,did:'',rec:'',fresh:1});places.push(q)}
+sel=q;$('list').classList.remove('open');tabs('tm');render();$('sheet').classList.add('open');draw(1);
+map.flyTo({center:[q.lng,q.lat],zoom:Math.max(map.getZoom(),17),pitch:55,bearing:map.getBearing()-25,duration:3200,essential:true,padding:{bottom:Math.round(innerHeight*.34)}})}
+function render(){const p=sel,sh=$('sheet'),c=CAT[p.t||'other'];
+sh.innerHTML=`<div class="hero" style="--a:${c[1]};--b:${c[2]}"><i></i><i></i><em>${c[0]}</em><span class="tag">${({food:'Food',coffee:'Coffee',bar:'Drinks',park:'Outdoors',shop:'Shopping',sight:'Culture',stay:'Stay',other:'Place'})[p.t||'other']}</span><button class="x" id="cx" aria-label="Close">✕</button></div><div class="body">
+<input type="text" class="name" id="nm" value="${esc(p.name)}" placeholder="Name this place"><div class="addr">${esc(p.addr)}</div>
+<div class="seg"><button class="w ${p.s=='w'?'on':''}" data-s="w">★ Want to visit</button><button class="v ${p.s=='v'?'on':''}" data-s="v">✓ Visited</button></div>
+<label>Notes &amp; ideas</label><textarea id="nt" rows="2" placeholder="Why do you want to go? What to try?">${esc(p.note)}</textarea>
+${p.s=='v'?`<label>Your rating</label><div class="stars">${[1,2,3,4,5].map(i=>`<button data-r="${i}" class="${p.rate>=i?'on':''}">★</button>`).join('')}</div>
+<label>What I did there</label><textarea id="dd" rows="3" placeholder="A little description of your visit…">${esc(p.did)}</textarea>
+<label>What I recommend</label><textarea id="rc" rows="3" placeholder="Best dish, hidden gem, best time to go…">${esc(p.rec)}</textarea>`:''}
+<div class="row"><button class="link" id="dl">Remove</button><button class="link d" id="dir">Directions ↗</button></div></div>`;
+$('cx').onclick=()=>closeSheet();
+$('dl').onclick=()=>{places=places.filter(x=>x!=p);save();closeSheet()};
+$('dir').onclick=()=>window.open('https://www.google.com/maps/dir/?api=1&destination='+p.lat+','+p.lng,'_blank');
+$('nm').oninput=e=>{p.name=e.target.value;p.named=1;save()};$('nt').oninput=e=>{p.note=e.target.value;save()};
+if($('dd')){$('dd').oninput=e=>{p.did=e.target.value;save()};$('rc').oninput=e=>{p.rec=e.target.value;save()}}
+sh.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{p.s=p.s==b.dataset.s?'':b.dataset.s;p.fresh=0;save();render();draw(1)});
+sh.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{p.rate=+b.dataset.r==p.rate?0:+b.dataset.r;save();render()})}
+function closeUntouched(){if(sel&&sel.fresh&&!sel.s&&!sel.note&&!sel.named){places=places.filter(x=>x!=sel);save()}}
+function closeSheet(){closeUntouched();sel=null;$('sheet').classList.remove('open');draw();map.easeTo({pitch:0,bearing:0,padding:{bottom:0},duration:1200})}
+function tabs(on){$('tm').classList.toggle('on',on=='tm');$('tl').classList.toggle('on',on=='tl')}
+$('tm').onclick=()=>{$('list').classList.remove('open');tabs('tm')};
+let filter='all';
+$('tl').onclick=()=>{closeSheet();$('list').classList.add('open');tabs('tl');lst()};
+function lst(){const l=$('list'),a=places.filter(p=>p.s&&(filter=='all'||p.s==filter));
+l.innerHTML=`<h1>My places</h1><div class="tabs">${[['all','All'],['w','Want to visit'],['v','Visited']].map(([k,t])=>`<button data-f="${k}" class="${filter==k?'on':''}">${t}</button>`).join('')}</div>`+(a.length?a.map(p=>{const c=CAT[p.t||'other'];return`<div class="item" data-i="${esc(p.id)}"><div class="e" style="background:${c[2]}66">${c[0]}</div><div style="min-width:0"><b>${esc(p.name)}</b><span>${p.s=='v'?'★'.repeat(p.rate||0)+' '+esc((p.rec||p.did||'').slice(0,50)):esc((p.note||p.addr||'').slice(0,50))}</span></div><div class="s" style="background:${p.s=='v'?'#D1FAE5':'#FFF1C2'};color:${p.s=='v'?'#047857':'#8a5a00'}">${p.s=='v'?'Visited':'Wishlist'}</div></div>`}).join(''):'<div class="empty">Nothing saved yet 🧭<br>Search or tap a place on the map, then mark it.</div>');
+l.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{filter=b.dataset.f;lst()});
+l.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>openP(places.find(p=>p.id==b.dataset.i)))}
+map.on('load',()=>draw());save();
+</script></body></html>
